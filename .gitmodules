@@ -1,0 +1,6 @@
+[submodule "third_parties/RxCpp"]
+	path = third_parties/RxCpp
+	url = https://github.com/Reactive-Extensions/RxCpp.git
+[submodule "third_parties/socket.io-client-cpp"]
+	path = third_parties/socket.io-client-cpp
+	url = https://github.com/albertnadal/socket.io-client-cpp.git
