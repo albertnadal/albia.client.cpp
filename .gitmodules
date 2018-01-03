@@ -4,3 +4,6 @@
 [submodule "third_parties/socket.io-client-cpp"]
 	path = third_parties/socket.io-client-cpp
 	url = https://github.com/albertnadal/socket.io-client-cpp.git
+[submodule "third_parties/curlpp"]
+	path = third_parties/curlpp
+	url = https://github.com/jpbarrette/curlpp.git
