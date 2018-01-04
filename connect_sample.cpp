@@ -1,4 +1,5 @@
 #include <string>
+#include <vector>
 #include <sstream>
 #include <iostream>
 
@@ -6,162 +7,93 @@
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
 
-void getDeviceTokenWithAPIKeyAndDeviceKey(const std::string& host, unsigned int apiPort, const std::string& apiKey, const std::string& deviceKey) {
+#include "rapidjson/document.h"
+#include "base64.h"
+
+using namespace rapidjson;
+using namespace std;
+
+const vector<string> explode(const string& s, const char& c)
+{
+   string buff{""};
+   vector<string> v;
+
+   for(auto n:s) {
+      if(n != c) buff+=n; else
+      if(n == c && buff != "") { v.push_back(buff); buff = ""; }
+   }
+   if(buff != "") v.push_back(buff);
+
+   return v;
+}
+
+struct device_token_t {
+  string token;
+  unsigned int device_id;
+};
+
+device_token_t* getDeviceTokenWithAPIKeyAndDeviceKey(const string& host, unsigned int apiPort, const string& apiKey, const string& deviceKey) {
 
    try {
       curlpp::Cleanup cleaner;
       curlpp::Easy request;
-      std::string scheme("http://");
-      std::string endpoint("/v1/request-device-token");
-std::cout << "URL: " << scheme+host+endpoint;
+      string scheme("http://");
+      string endpoint("/v1/request-device-token");
+
       curlpp::options::Url serverUrl(scheme+host+endpoint);
       curlpp::options::Port serverPort(apiPort);	
 
-      std::list<std::string> headersList;
+      list<string> headersList;
       headersList.push_back("Accept: application/json");
       headersList.push_back("X-albia-api-key: "+apiKey);
       headersList.push_back("X-albia-device-key: "+deviceKey);
       curlpp::options::HttpHeader headers(headersList);
 
+      ostringstream os;
+      curlpp::options::WriteStream ws(&os);
+      request.setOpt(ws);
       request.setOpt(headers);
       request.setOpt(serverUrl);
       request.setOpt(serverPort);
       request.perform();
 
+      string jsonResponse = os.str();
+      const char* json = "{\"project\":\"rapidjson\",\"stars\":10}";
+      Document d;
+      d.Parse(jsonResponse.c_str());
+      Value& s = d["token"];
+
+      device_token_t* deviceToken = new device_token_t;
+      deviceToken->token = s.GetString();
+
+      string decodedToken = base64_decode(deviceToken->token);
+      vector<string> tokenVector = explode(decodedToken, ';');
+      deviceToken->device_id = stoi(tokenVector[0]);
+
+      return deviceToken;
+
    } catch( curlpp::RuntimeError &e ){
-      std::cout << e.what() << std::endl;
+      cout << e.what() << endl;
    } catch( curlpp::LogicError &e ) {
-      std::cout << e.what() << std::endl;
+      cout << e.what() << endl;
    }
+
+   return NULL;
 }
 
 int main(int, char **)
 {
-   std::string hostname("maduixa.lafruitera.com");
-   std::string apiKey("app1234");
-   std::string deviceKey("key1234");
-   getDeviceTokenWithAPIKeyAndDeviceKey(hostname, 3001, apiKey, deviceKey);
+   string hostname("maduixa.lafruitera.com");
+   string apiKey("app1234");
+   string deviceKey("key1234");
 
-/*
-	try
-	{
-		curlpp::Cleanup myCleanup;
+   device_token_t* deviceToken = getDeviceTokenWithAPIKeyAndDeviceKey(hostname, 3001, apiKey, deviceKey);
 
-		// First easy example.
-		{
-		  // The first easiest example is to retreive the content of
-		  // a web page and put it in a stream.
-		  std::cout << curlpp::options::Url("http://example.com");
+   if(deviceToken != NULL) {
+      cout << "TOKEN: " << deviceToken->token;
+      cout << "DEVICE ID: " << deviceToken->device_id;
+      delete deviceToken;
+   }
 
-		  // You don't need to use just the standard outputs. You
-		  // can use any stream:
-		  std::ostringstream os;
-		  os << curlpp::options::Url("http://example.com");
-		}
-
-		// More elaborate example.
-		{
-		  // What the previous example done there was simply 
-		  // to create a curlpp::Easy class, which is the basic
-		  // object in cURLpp, and then set the Url option.
-		  // curlpp::options classes are the primitives that allow to specify 
-		  // values to the requests. 
-		  curlpp::options::Url myUrl(std::string("http://example.com"));
-		  curlpp::Easy myRequest;
-		  myRequest.setOpt(myUrl);
-
-		  // Now that all the options we wanted to set are there, we need to
-		  // actually do the request. the "perform" method does actually that.
-		  // With that call, the request will be done and the content of that URL
-		  // will be printed in std::cout (which is the default).
-		  myRequest.perform();
-
-		  // If we wanted to put the content of the URL within a string stream
-		  // (or any type of std::ostream, for that matter), like the first example, 
-		  // we would use the WriteStrem option like this:
-		  std::ostringstream os;
-		  curlpp::options::WriteStream ws(&os);
-		  myRequest.setOpt(ws);
-		  myRequest.perform();
-
-		  // There is some shorcut within curlpp that allow you to write shorter code
-		  // like this:
-		  os << myRequest;
-
-		  // That would do exactly what the previous code was doing.
-		}
-
-		// Creation of the URL option.
-		curlpp::options::Url myUrl(std::string("http://example.com"));
-
-		// Copy construct from the other URL.
-		curlpp::options::Url myUrl2(myUrl);
-
-		// Creation of the port option.
-		curlpp::options::Port myPort(MyPort);
-
-		// Creation of the request.
-		curlpp::Easy myRequest;
-
-		// Creation of an option that contain a copy of the URL option.
-		curlpp::OptionBase *mytest = myUrl.clone();
-		myRequest.setOpt(*mytest);
-
-		// You can reuse the base option for other type of option
-		// and set the option to the request. but first, don't forget 
-		// to delete the previous memory. You can delete it since the 
-		// option is internally duplicated for the request.
-		delete mytest;
-		mytest = myPort.clone();
-		myRequest.setOpt(*mytest);
-		delete mytest;
-
-		// You can clone an option directly to the same type of 
-		// option.
-		curlpp::options::Url *myUrl3 = myUrl.clone();
-		myRequest.setOpt(myUrl3);
-		// Now myUrl3 is owned by the request we will NOT use 
-		// it anymore.
-
-
-		// You don't need to declare an option if you just want 
-		// to use it once.
-		myRequest.setOpt(curlpp::options::Url("example.com"));
-
-
-		// Note that the previous line wasn't really efficient
-		// because we create the option, this option is duplicated
-		// for the request and then the option destructor is called.
-		// You can use this instead:
-		myRequest.setOpt(new curlpp::options::Url("example.com"));
-		// Note that with this the request will use directly this
-		// instance we just created. Be aware that if you pass an
-		// Option pointer to the setOpt function, it will consider
-		// the instance has its own instance. The Option instance
-		// will be deleted when the request will be deleted, so
-		// don't use the instance further in your code.
-
-
-		// Doing the previous line is efficient as this:
-		myRequest.setOpt(myUrl.clone());
-
-
-		// You can retreive the value of a specific option.
-		std::cout << myUrl2.getValue() << std::endl;
-
-		// Perform the transaction with the options set.
-		myRequest.perform();
-	}
-
-	catch( curlpp::RuntimeError &e )
-	{
-		std::cout << e.what() << std::endl;
-	}
-
-	catch( curlpp::LogicError &e )
-	{
-		std::cout << e.what() << std::endl;
-	}
-*/  
   return 0;
 }
