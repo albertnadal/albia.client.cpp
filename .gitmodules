@@ -7,3 +7,6 @@
 [submodule "third_parties/curlpp"]
 	path = third_parties/curlpp
 	url = https://github.com/jpbarrette/curlpp.git
+[submodule "third_parties/rapidjson"]
+	path = third_parties/rapidjson
+	url = https://github.com/Tencent/rapidjson.git
