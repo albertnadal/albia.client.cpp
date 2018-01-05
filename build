@@ -2,7 +2,7 @@
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -std=c++11 -o base64.cpp.o -c base64.cpp
 
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -std=c++11 -o connect_sample.cpp.o -c connect_sample.cpp -I/Users/albert/albiasoft/albia.client.cpp/third_parties/rapidjson/include
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -std=c++11 -o connect_sample.cpp.o -c connect_sample.cpp -I/Users/albert/albiasoft/albia.client.cpp/third_parties/rapidjson/include -I/Users/albert/albiasoft/albia.client.cpp/third_parties/RxCpp/Rx/v2/src
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names base64.cpp.o connect_sample.cpp.o -o connect_sample -lcurlpp -lcurl
 
