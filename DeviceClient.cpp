@@ -26,17 +26,33 @@ struct connect_device_data_t {
         string socket_io_namespace;
 };
 
+DeviceClient(const string& apiKey, const string& deviceKey, const string& hostname);
+void connect(const string& hostname);
 rxcpp::observable<connect_device_data_t*> connectToServer(const string& hostname, unsigned int apiPort, unsigned int webSocketPort, const string& deviceToken, const string& apiKey, const string& deviceKey);
 
 private:
 
+string apiKey;
+string deviceKey;
+string host;
+unsigned int apiPort;
+unsigned int webSocketPort;
+string dbFilename;
 static const vector<string> explode(const string& s, const char& c);
 device_token_t* getDeviceTokenWithAPIKeyAndDeviceKey(const string& hostname, unsigned int apiPort, const string& apiKey, const string& deviceKey);
 
 };
 
-const vector<string> DeviceClient::explode(const string& s, const char& c)
-{
+DeviceClient::DeviceClient(const string& apiKey, const string& deviceKey, const string& hostname) {
+        this->apiKey = apiKey;
+        this->deviceKey = deviceKey;
+        this->host = hostname;
+        this->apiPort = 3001;
+        this->webSocketPort = 3000;
+        this->dbFilename = "albia.sqlite";
+}
+
+const vector<string> DeviceClient::explode(const string& s, const char& c) {
         string buff{""};
         vector<string> v;
 
@@ -96,6 +112,10 @@ DeviceClient::device_token_t* DeviceClient::getDeviceTokenWithAPIKeyAndDeviceKey
         }
 
         return NULL;
+}
+
+void connect(const string& hostname) {
+
 }
 
 rxcpp::observable<DeviceClient::connect_device_data_t*> DeviceClient::connectToServer(const string& hostname, unsigned int apiPort, unsigned int webSocketPort, const string& deviceToken, const string& apiKey, const string& deviceKey) {
@@ -170,14 +190,14 @@ rxcpp::observable<DeviceClient::connect_device_data_t*> DeviceClient::connectToS
 
 int main(int, char **)
 {
-        DeviceClient *client = new DeviceClient();
-
         string hostname("maduixa.lafruitera.com");
         string apiKey("app1234");
         string deviceKey("key1234");
         string deviceToken("");
         string socketIOnamespace("");
         unsigned int deviceId = 0;
+
+        DeviceClient *client = new DeviceClient(apiKey, deviceKey, hostname);
 
         rxcpp::observable<DeviceClient::connect_device_data_t*> observable = client->connectToServer(hostname, 3001, 3000, deviceToken, apiKey, deviceKey);
 
