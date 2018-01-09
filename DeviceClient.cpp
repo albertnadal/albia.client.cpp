@@ -5,10 +5,12 @@
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
+#include <sio_client.h>
 #include "rapidjson/document.h"
 #include "rxcpp/rx.hpp"
 #include "base64.h"
 
+using namespace sio;
 using namespace rapidjson;
 using namespace std;
 
@@ -25,8 +27,10 @@ bool isConnected;
 DeviceClient(const string& apiKey, const string& deviceKey, const string& hostname);
 void connect(const string& hostname);
 void reconnect();
-void onConnect(void (*callback)());
-void onConnectError(void (*callback)(const std::exception& ex));
+void disconnect();
+void onConnect(const std::function<void()>& callback);
+void onConnectError(const std::function<void(const std::exception& ex)>& callback);
+void onDisconnect(const std::function<void()>& callback);
 rxcpp::observable<int> connectToServer(const string& hostname, unsigned int apiPort, unsigned int webSocketPort, const string& deviceToken, const string& apiKey, const string& deviceKey);
 
 private:
@@ -41,8 +45,9 @@ string deviceToken;
 string socketIOnamespace;
 unsigned int deviceId;
 static const vector<string> explode(const string& s, const char& c);
-void (*onConnectCallback)();
-void (*onConnectErrorCallback)(const std::exception& ex);
+std::function<void()> onConnectCallback;
+std::function<void(const std::exception& ex)> onConnectErrorCallback;
+std::function<void()> onDisconnectCallback;
 device_token_t* getDeviceTokenWithAPIKeyAndDeviceKey(const string& hostname, unsigned int apiPort, const string& apiKey, const string& deviceKey);
 
 };
@@ -75,12 +80,16 @@ const vector<string> DeviceClient::explode(const string& s, const char& c) {
         return v;
 }
 
-void DeviceClient::onConnect(void (*callback)()) {
+void DeviceClient::onConnect(const std::function<void()>& callback) {
    this->onConnectCallback = callback;
 }
 
-void DeviceClient::onConnectError(void (*callback)(const std::exception& ex)) {
+void DeviceClient::onConnectError(const std::function<void(const std::exception&)>& callback) {
    this->onConnectErrorCallback = callback;
+}
+
+void DeviceClient::onDisconnect(const std::function<void()>& callback) {
+   this->onDisconnectCallback = callback;
 }
 
 DeviceClient::device_token_t* DeviceClient::getDeviceTokenWithAPIKeyAndDeviceKey(const string& hostname, unsigned int apiPort, const string& apiKey, const string& deviceKey) {
@@ -152,7 +161,7 @@ void DeviceClient::connect(const string& hostname = "") {
           try {std::rethrow_exception(ep);}
           catch (const std::exception& ex) {
                   if(this->onConnectErrorCallback != NULL) {
-                    (*this->onConnectErrorCallback)(ex);
+                    (this->onConnectErrorCallback)(ex);
                   }
           }
   },
@@ -164,7 +173,7 @@ void DeviceClient::connect(const string& hostname = "") {
             $this->startHeartBeatTimer();
 */
             if(this->onConnectCallback != NULL) {
-              (*this->onConnectCallback)();
+              (this->onConnectCallback)();
             }
 /*
             // Launch the event loop of the socketIO
@@ -176,6 +185,16 @@ void DeviceClient::connect(const string& hostname = "") {
 
 void DeviceClient::reconnect() {
    this->connect(this->host);
+}
+
+void DeviceClient::disconnect() {
+   if(this->isConnected) {
+     this->isConnected = false;
+
+     if(this->onDisconnectCallback != NULL) {
+       (this->onDisconnectCallback)();
+     }
+   }
 }
 
 rxcpp::observable<int> DeviceClient::connectToServer(const string& hostname, unsigned int apiPort, unsigned int webSocketPort, const string& deviceToken, const string& apiKey, const string& deviceKey) {
@@ -247,8 +266,13 @@ int main(int, char **)
 
         DeviceClient *client = new DeviceClient(apiKey, deviceKey, hostname);
 
-        client->onConnect([]() {
+        client->onConnect([&client]() {
           cout << "Connected!" << endl;
+          client->disconnect();
+        });
+
+        client->onDisconnect([]() {
+          cout << "Disconnected!" << endl;
         });
 
         client->onConnectError([](const std::exception& ex) {
