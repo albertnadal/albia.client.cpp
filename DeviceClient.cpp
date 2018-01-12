@@ -1,5 +1,10 @@
+#include <unistd.h>
+
 #include <string>
 #include <vector>
+#include <map>
+#include <mutex>
+#include <condition_variable>
 #include <sstream>
 #include <iostream>
 #include <curlpp/cURLpp.hpp>
@@ -13,6 +18,41 @@
 using namespace sio;
 using namespace rapidjson;
 using namespace std;
+
+std::mutex _lock;
+std::condition_variable_any _cond;
+
+class SIOConnectionListener
+{
+    sio::client *handler;
+
+public:
+
+    bool connectFinished;
+
+    SIOConnectionListener(sio::client* h):
+    handler(h)
+    {
+      this->connectFinished = false;
+    }
+
+    void on_connected()
+    {
+        _lock.lock();
+        _cond.notify_all();
+        this->connectFinished = true;
+        _lock.unlock();
+    }
+    void on_close(client::close_reason const& reason)
+    {
+        exit(0);
+    }
+
+    void on_fail()
+    {
+        exit(0);
+    }
+};
 
 class DeviceClient {
 
@@ -42,8 +82,11 @@ unsigned int apiPort;
 unsigned int webSocketPort;
 string dbFilename;
 string deviceToken;
-string socketIOnamespace;
 unsigned int deviceId;
+string socketIOnamespace;
+sio::client *socketIO;
+sio::socket::ptr currentSocket;
+SIOConnectionListener *connectionListener;
 static const vector<string> explode(const string& s, const char& c);
 std::function<void()> onConnectCallback;
 std::function<void(const std::exception& ex)> onConnectErrorCallback;
@@ -65,6 +108,9 @@ DeviceClient::DeviceClient(const string& apiKey, const string& deviceKey, const 
         this->socketIOnamespace = "";
         this->onConnectCallback = NULL;
         this->onConnectErrorCallback = NULL;
+        this->socketIO = NULL;
+        this->connectionListener = NULL;
+        this->currentSocket = NULL;
 }
 
 const vector<string> DeviceClient::explode(const string& s, const char& c) {
@@ -166,6 +212,49 @@ void DeviceClient::connect(const string& hostname = "") {
           }
   },
           [this](){
+
+            if(this->socketIO != NULL) {
+              delete this->socketIO;
+            }
+
+            if(this->connectionListener != NULL) {
+              delete this->connectionListener;
+            }
+
+            if(this->currentSocket != NULL) {
+              delete &this->currentSocket;
+            }
+
+            cout << endl << "Creant instancia de sio::client" << endl;
+            this->socketIO = new sio::client();
+            cout << endl << "Creant instancia de SIOConnectionListener" << endl;
+            this->connectionListener = new SIOConnectionListener(this->socketIO);
+
+            this->socketIO->set_open_listener(std::bind(&SIOConnectionListener::on_connected, this->connectionListener));
+            this->socketIO->set_close_listener(std::bind(&SIOConnectionListener::on_close, this->connectionListener,std::placeholders::_1));
+            this->socketIO->set_fail_listener(std::bind(&SIOConnectionListener::on_fail, this->connectionListener));
+
+            cout << endl << "Connectant websocket... " << "http://"+this->host+":"+std::to_string(this->webSocketPort) << endl;
+            std::map<std::string, std::string> httpHeaders;
+            httpHeaders["authorization"] = this->deviceToken;
+            this->socketIO->connect("http://"+this->host+":"+std::to_string(this->webSocketPort), {}, httpHeaders);
+
+            _lock.lock();
+            if(!this->connectionListener->connectFinished)
+            {
+                _cond.wait(_lock);
+            }
+            _lock.unlock();
+
+            this->currentSocket = this->socketIO->socket("/v1/"+this->socketIOnamespace);
+            cout << "Current namespace: " << this->currentSocket->get_namespace() << endl;
+
+/*
+            // Delete old records sent
+            $lastRecordIdSent = $self->getLastRecordIdSent();
+            $self->db->exec("DELETE FROM write_operation WHERE id_write_operation <= $lastRecordIdSent");
+*/
+
             cout << "DEVICE ID: " << this->deviceId << " DEVICE TOKEN: " << this->deviceToken << endl << "NAMESPACE: " << this->socketIOnamespace << endl;
             this->isConnected = true;
 /*
@@ -189,6 +278,11 @@ void DeviceClient::reconnect() {
 
 void DeviceClient::disconnect() {
    if(this->isConnected) {
+     this->currentSocket->off_all();
+     this->currentSocket->off_error();
+     this->currentSocket->close();
+     this->socketIO->sync_close();
+     this->socketIO->clear_con_listeners();
      this->isConnected = false;
 
      if(this->onDisconnectCallback != NULL) {
@@ -260,7 +354,7 @@ rxcpp::observable<int> DeviceClient::connectToServer(const string& hostname, uns
 
 int main(int, char **)
 {
-        string hostname("maduixa.lafruitera.com");
+        string hostname("localhost"); //"maduixa.lafruitera.com");
         string apiKey("app1234");
         string deviceKey("key1234");
 
@@ -268,6 +362,7 @@ int main(int, char **)
 
         client->onConnect([&client]() {
           cout << "Connected!" << endl;
+          usleep(3000000);
           client->disconnect();
         });
 
@@ -280,6 +375,6 @@ int main(int, char **)
         });
 
         client->connect();
-
+usleep(10000000);
         return 0;
 }
