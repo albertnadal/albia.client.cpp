@@ -14,6 +14,8 @@
 #include "rapidjson/document.h"
 #include "rxcpp/rx.hpp"
 #include "base64.h"
+#include "proto3/albia.pb.h"
+#include "proto3/timestamp.pb.h"
 
 using namespace sio;
 using namespace rapidjson;
