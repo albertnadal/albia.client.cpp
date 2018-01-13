@@ -45,6 +45,7 @@ public:
         this->connectFinished = true;
         _lock.unlock();
     }
+
     void on_close(client::close_reason const& reason)
     {
         exit(0);
@@ -55,6 +56,16 @@ public:
         exit(0);
     }
 };
+
+class DeviceTimestamp {
+public:
+DeviceTimestamp();
+private:
+};
+
+DeviceTimestamp::DeviceTimestamp() {
+
+}
 
 class DeviceClient {
 
@@ -73,7 +84,14 @@ void disconnect();
 void onConnect(const std::function<void()>& callback);
 void onConnectError(const std::function<void(const std::exception& ex)>& callback);
 void onDisconnect(const std::function<void()>& callback);
-rxcpp::observable<int> connectToServer(const string& hostname, unsigned int apiPort, unsigned int webSocketPort, const string& deviceToken, const string& apiKey, const string& deviceKey);
+void writeDataBool(const string& key, bool data, DeviceTimestamp& timestamp);
+void writeDataInt32(const string& key, int32_t data, DeviceTimestamp& timestamp);
+void writeDataInt64(const string& key, int64_t data, DeviceTimestamp& timestamp);
+void writeDataUInt32(const string& key, uint32_t data, DeviceTimestamp& timestamp);
+void writeDataUInt64(const string& key, uint64_t data, DeviceTimestamp& timestamp);
+void writeDataDouble(const string& key, double data, DeviceTimestamp& timestamp);
+void writeDataFloat(const string& key, float data, DeviceTimestamp& timestamp);
+void writeDataString(const string& key, const string& data, DeviceTimestamp& timestamp);
 
 private:
 
@@ -94,7 +112,7 @@ std::function<void()> onConnectCallback;
 std::function<void(const std::exception& ex)> onConnectErrorCallback;
 std::function<void()> onDisconnectCallback;
 device_token_t* getDeviceTokenWithAPIKeyAndDeviceKey(const string& hostname, unsigned int apiPort, const string& apiKey, const string& deviceKey);
-
+rxcpp::observable<int> connectToServer(const string& hostname, unsigned int apiPort, unsigned int webSocketPort, const string& deviceToken, const string& apiKey, const string& deviceKey);
 };
 
 DeviceClient::DeviceClient(const string& apiKey, const string& deviceKey, const string& hostname) {
@@ -138,6 +156,38 @@ void DeviceClient::onConnectError(const std::function<void(const std::exception&
 
 void DeviceClient::onDisconnect(const std::function<void()>& callback) {
    this->onDisconnectCallback = callback;
+}
+
+void DeviceClient::writeDataBool(const string& key, bool data, DeviceTimestamp& timestamp) {
+
+}
+
+void DeviceClient::writeDataInt32(const string& key, int32_t data, DeviceTimestamp& timestamp) {
+
+}
+
+void DeviceClient::writeDataInt64(const string& key, int64_t data, DeviceTimestamp& timestamp) {
+
+}
+
+void DeviceClient::writeDataUInt32(const string& key, uint32_t data, DeviceTimestamp& timestamp) {
+
+}
+
+void DeviceClient::writeDataUInt64(const string& key, uint64_t data, DeviceTimestamp& timestamp) {
+
+}
+
+void DeviceClient::writeDataDouble(const string& key, double data, DeviceTimestamp& timestamp) {
+
+}
+
+void DeviceClient::writeDataFloat(const string& key, float data, DeviceTimestamp& timestamp) {
+
+}
+
+void DeviceClient::writeDataString(const string& key, const string& data, DeviceTimestamp& timestamp) {
+
 }
 
 DeviceClient::device_token_t* DeviceClient::getDeviceTokenWithAPIKeyAndDeviceKey(const string& hostname, unsigned int apiPort, const string& apiKey, const string& deviceKey) {
