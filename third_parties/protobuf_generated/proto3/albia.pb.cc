@@ -47,7 +47,7 @@ void InitDefaultsDeviceRecordMsgImpl() {
 #else
   ::google::protobuf::internal::InitProtobufDefaults();
 #endif  // GOOGLE_PROTOBUF_ENFORCE_UNIQUENESS
-  protobuf_proto3_2ftimestamp_2eproto::InitDefaultsTimestamp();
+  protobuf_google_2fprotobuf_2ftimestamp_2eproto::InitDefaultsTimestamp();
   {
     void* ptr = &::_DeviceRecordMsg_default_instance_;
     new (ptr) ::DeviceRecordMsg();
@@ -69,7 +69,7 @@ void InitDefaultsDeviceEventMsgImpl() {
 #else
   ::google::protobuf::internal::InitProtobufDefaults();
 #endif  // GOOGLE_PROTOBUF_ENFORCE_UNIQUENESS
-  protobuf_proto3_2ftimestamp_2eproto::InitDefaultsTimestamp();
+  protobuf_google_2fprotobuf_2ftimestamp_2eproto::InitDefaultsTimestamp();
   {
     void* ptr = &::_DeviceEventMsg_default_instance_;
     new (ptr) ::DeviceEventMsg();
@@ -149,29 +149,29 @@ void protobuf_RegisterTypes(const ::std::string&) {
 void AddDescriptorsImpl() {
   InitDefaults();
   static const char descriptor[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-      "\n\022proto3/albia.proto\032\026proto3/timestamp.p"
-      "roto\"\327\003\n\017DeviceRecordMsg\022\020\n\010deviceId\030\001 \001"
-      "(\r\022\013\n\003key\030\002 \001(\t\022)\n\004type\030\003 \001(\0162\033.DeviceRe"
-      "cordMsg.RecordType\022(\n\004date\030\004 \001(\0132\032.googl"
-      "e.protobuf.Timestamp\022\025\n\013doubleValue\030\005 \001("
-      "\001H\000\022\024\n\nfloatValue\030\006 \001(\002H\000\022\024\n\nint32Value\030"
-      "\007 \001(\005H\000\022\024\n\nint64Value\030\010 \001(\003H\000\022\025\n\013uint32V"
-      "alue\030\t \001(\rH\000\022\025\n\013uint64Value\030\n \001(\004H\000\022\023\n\tb"
-      "oolValue\030\013 \001(\010H\000\022\025\n\013stringValue\030\014 \001(\tH\000\022"
-      "\031\n\017byteStringValue\030\r \001(\014H\000\"r\n\nRecordType"
-      "\022\n\n\006DOUBLE\020\000\022\t\n\005FLOAT\020\001\022\t\n\005INT32\020\002\022\t\n\005IN"
-      "T64\020\003\022\n\n\006UINT32\020\004\022\n\n\006UINT64\020\005\022\010\n\004BOOL\020\006\022"
-      "\n\n\006STRING\020\007\022\t\n\005BYTES\020\010B\016\n\014record_value\"\202"
-      "\001\n\016DeviceEventMsg\022\016\n\006action\030\001 \001(\t\022\020\n\010dev"
-      "iceId\030\002 \001(\r\022\026\n\016targetDeviceId\030\003 \001(\r\022(\n\004d"
-      "ate\030\004 \001(\0132\032.google.protobuf.Timestamp\022\014\n"
-      "\004data\030\005 \001(\tb\006proto3"
+      "\n\022proto3/albia.proto\032\037google/protobuf/ti"
+      "mestamp.proto\"\327\003\n\017DeviceRecordMsg\022\020\n\010dev"
+      "iceId\030\001 \001(\r\022\013\n\003key\030\002 \001(\t\022)\n\004type\030\003 \001(\0162\033"
+      ".DeviceRecordMsg.RecordType\022(\n\004date\030\004 \001("
+      "\0132\032.google.protobuf.Timestamp\022\025\n\013doubleV"
+      "alue\030\005 \001(\001H\000\022\024\n\nfloatValue\030\006 \001(\002H\000\022\024\n\nin"
+      "t32Value\030\007 \001(\005H\000\022\024\n\nint64Value\030\010 \001(\003H\000\022\025"
+      "\n\013uint32Value\030\t \001(\rH\000\022\025\n\013uint64Value\030\n \001"
+      "(\004H\000\022\023\n\tboolValue\030\013 \001(\010H\000\022\025\n\013stringValue"
+      "\030\014 \001(\tH\000\022\031\n\017byteStringValue\030\r \001(\014H\000\"r\n\nR"
+      "ecordType\022\n\n\006DOUBLE\020\000\022\t\n\005FLOAT\020\001\022\t\n\005INT3"
+      "2\020\002\022\t\n\005INT64\020\003\022\n\n\006UINT32\020\004\022\n\n\006UINT64\020\005\022\010"
+      "\n\004BOOL\020\006\022\n\n\006STRING\020\007\022\t\n\005BYTES\020\010B\016\n\014recor"
+      "d_value\"\202\001\n\016DeviceEventMsg\022\016\n\006action\030\001 \001"
+      "(\t\022\020\n\010deviceId\030\002 \001(\r\022\026\n\016targetDeviceId\030\003"
+      " \001(\r\022(\n\004date\030\004 \001(\0132\032.google.protobuf.Tim"
+      "estamp\022\014\n\004data\030\005 \001(\tb\006proto3"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 659);
+      descriptor, 668);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "proto3/albia.proto", &protobuf_RegisterTypes);
-  ::protobuf_proto3_2ftimestamp_2eproto::AddDescriptors();
+  ::protobuf_google_2fprotobuf_2ftimestamp_2eproto::AddDescriptors();
 }
 
 void AddDescriptors() {

@@ -7,6 +7,7 @@
 #include <condition_variable>
 #include <sstream>
 #include <iostream>
+#include <chrono>
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
@@ -15,7 +16,6 @@
 #include "rxcpp/rx.hpp"
 #include "base64.h"
 #include "proto3/albia.pb.h"
-#include "proto3/timestamp.pb.h"
 
 using namespace sio;
 using namespace rapidjson;
@@ -58,13 +58,44 @@ public:
 };
 
 class DeviceTimestamp {
+
 public:
+uint64_t unixTimestamp;
+uint64_t microseconds;
+
 DeviceTimestamp();
-private:
+DeviceTimestamp(uint64_t _unix_timestamp);
+DeviceTimestamp(uint64_t _unix_timestamp, uint64_t _microseconds);
+
+/*
+  public static function UTCTimestampWithMicroseconds()
+  {
+      $deviceTimestamp = new DeviceTimestamp();
+      list($usec, $sec) = explode(" ", microtime());
+      $deviceTimestamp->unixTimestamp = (int)$sec;
+      $deviceTimestamp->microseconds = floor((float)$usec * 1000000);
+      return $deviceTimestamp;
+  }
+*/
+
 };
 
 DeviceTimestamp::DeviceTimestamp() {
+  const auto now     = std::chrono::system_clock::now();
+  const auto epoch   = now.time_since_epoch();
+  const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(epoch);
+  this->unixTimestamp = seconds.count();
+  this->microseconds = 0;
+}
 
+DeviceTimestamp::DeviceTimestamp(uint64_t _unix_timestamp) {
+  this->unixTimestamp = _unix_timestamp;
+  this->microseconds = 0;
+}
+
+DeviceTimestamp::DeviceTimestamp(uint64_t _unix_timestamp, uint64_t _microseconds) {
+  this->unixTimestamp = _unix_timestamp;
+  this->microseconds = _microseconds;
 }
 
 class DeviceClient {
@@ -84,14 +115,14 @@ void disconnect();
 void onConnect(const std::function<void()>& callback);
 void onConnectError(const std::function<void(const std::exception& ex)>& callback);
 void onDisconnect(const std::function<void()>& callback);
-void writeDataBool(const string& key, bool data, DeviceTimestamp& timestamp);
-void writeDataInt32(const string& key, int32_t data, DeviceTimestamp& timestamp);
-void writeDataInt64(const string& key, int64_t data, DeviceTimestamp& timestamp);
-void writeDataUInt32(const string& key, uint32_t data, DeviceTimestamp& timestamp);
-void writeDataUInt64(const string& key, uint64_t data, DeviceTimestamp& timestamp);
-void writeDataDouble(const string& key, double data, DeviceTimestamp& timestamp);
-void writeDataFloat(const string& key, float data, DeviceTimestamp& timestamp);
-void writeDataString(const string& key, const string& data, DeviceTimestamp& timestamp);
+void writeDataBool(const string& key, bool data, DeviceTimestamp* timestamp);
+void writeDataInt32(const string& key, int32_t data, DeviceTimestamp* timestamp);
+void writeDataInt64(const string& key, int64_t data, DeviceTimestamp* timestamp);
+void writeDataUInt32(const string& key, uint32_t data, DeviceTimestamp* timestamp);
+void writeDataUInt64(const string& key, uint64_t data, DeviceTimestamp* timestamp);
+void writeDataDouble(const string& key, double data, DeviceTimestamp* timestamp);
+void writeDataFloat(const string& key, float data, DeviceTimestamp* timestamp);
+void writeDataString(const string& key, const string& data, DeviceTimestamp* timestamp);
 
 private:
 
@@ -113,6 +144,7 @@ std::function<void(const std::exception& ex)> onConnectErrorCallback;
 std::function<void()> onDisconnectCallback;
 device_token_t* getDeviceTokenWithAPIKeyAndDeviceKey(const string& hostname, unsigned int apiPort, const string& apiKey, const string& deviceKey);
 rxcpp::observable<int> connectToServer(const string& hostname, unsigned int apiPort, unsigned int webSocketPort, const string& deviceToken, const string& apiKey, const string& deviceKey);
+google::protobuf::Timestamp* getProtobufTimestampFromDeviceTimestamp(DeviceTimestamp* timestamp);
 };
 
 DeviceClient::DeviceClient(const string& apiKey, const string& deviceKey, const string& hostname) {
@@ -158,35 +190,58 @@ void DeviceClient::onDisconnect(const std::function<void()>& callback) {
    this->onDisconnectCallback = callback;
 }
 
-void DeviceClient::writeDataBool(const string& key, bool data, DeviceTimestamp& timestamp) {
+google::protobuf::Timestamp* DeviceClient::getProtobufTimestampFromDeviceTimestamp(DeviceTimestamp* timestamp) {
+  google::protobuf::Timestamp *utcDate = new google::protobuf::Timestamp();
+  if (timestamp == NULL) {
+      std::chrono::nanoseconds ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch());
+      std::chrono::seconds s = std::chrono::duration_cast<std::chrono::seconds>(ns);
+      ns -= s;
+      uint64_t seconds = s.count();
+      uint64_t nanoseconds = ns.count();
+      utcDate->set_seconds(seconds);
+      utcDate->set_nanos(nanoseconds);
+  } else {
+      utcDate->set_seconds(timestamp->unixTimestamp);
+      utcDate->set_nanos(timestamp->microseconds * 1000); // 1 microsecond = 1000 nanoseconds
+  }
+  return utcDate;
+}
+
+void DeviceClient::writeDataBool(const string& key, bool data, DeviceTimestamp* timestamp = NULL) {
+  DeviceRecordMsg *record = new DeviceRecordMsg();
+  record->set_deviceid(0);
+  record->set_key(key);
+  record->set_boolvalue(data);
+  record->set_type(DeviceRecordMsg_RecordType_BOOL);
+  google::protobuf::Timestamp *utcDate = this->getProtobufTimestampFromDeviceTimestamp(timestamp);
+  record->set_allocated_date(utcDate);
+}
+
+void DeviceClient::writeDataInt32(const string& key, int32_t data, DeviceTimestamp* timestamp = NULL) {
 
 }
 
-void DeviceClient::writeDataInt32(const string& key, int32_t data, DeviceTimestamp& timestamp) {
+void DeviceClient::writeDataInt64(const string& key, int64_t data, DeviceTimestamp* timestamp = NULL) {
 
 }
 
-void DeviceClient::writeDataInt64(const string& key, int64_t data, DeviceTimestamp& timestamp) {
+void DeviceClient::writeDataUInt32(const string& key, uint32_t data, DeviceTimestamp* timestamp = NULL) {
 
 }
 
-void DeviceClient::writeDataUInt32(const string& key, uint32_t data, DeviceTimestamp& timestamp) {
+void DeviceClient::writeDataUInt64(const string& key, uint64_t data, DeviceTimestamp* timestamp = NULL) {
 
 }
 
-void DeviceClient::writeDataUInt64(const string& key, uint64_t data, DeviceTimestamp& timestamp) {
+void DeviceClient::writeDataDouble(const string& key, double data, DeviceTimestamp* timestamp = NULL) {
 
 }
 
-void DeviceClient::writeDataDouble(const string& key, double data, DeviceTimestamp& timestamp) {
+void DeviceClient::writeDataFloat(const string& key, float data, DeviceTimestamp* timestamp = NULL) {
 
 }
 
-void DeviceClient::writeDataFloat(const string& key, float data, DeviceTimestamp& timestamp) {
-
-}
-
-void DeviceClient::writeDataString(const string& key, const string& data, DeviceTimestamp& timestamp) {
+void DeviceClient::writeDataString(const string& key, const string& data, DeviceTimestamp* timestamp = NULL) {
 
 }
 
@@ -415,6 +470,7 @@ int main(int, char **)
         client->onConnect([&client]() {
           cout << "Connected!" << endl;
           usleep(3000000);
+          client->writeDataBool("clau", true);
           client->disconnect();
         });
 
