@@ -1,0 +1,154 @@
+- - - - - - -
+
+Compile socket.io.cpp
+
+git fetch origin
+git checkout release
+git submodule init
+git submodule update
+cd lib/rapidjson
+git checkout master
+cd ../..
+mkdir build
+cmake ../
+make install
+
+albert:build albert$ sudo make install
+Password:
+[100%] Built target sioclient
+Install the project...
+-- Install configuration: ""
+-- Installing: /usr/local/include/sio_client.h
+-- Installing: /usr/local/include/sio_message.h
+-- Installing: /usr/local/include/sio_socket.h
+-- Installing: /usr/local/lib/libsioclient.a
+
+- - - - - - -- - - -- 
+
+git clone --recurse-submodules https://github.com/virtulabs/socket.io-client-cpp.git
+git fetch origin
+git checkout -b release origin/release
+git submodule init
+git submodule update
+
+- - - - - - - - - - -
+
+RxCPP compilation
+
+git submodule init
+git submodule update
+mkdir cd projects/build/
+cd projects/build/
+cmake -G"Unix Makefiles" -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=RelWithDebInfo -B. ../CMake
+make
+
+- - - - - - - - - - -
+
+RxCPP example compilation
+
+/usr/bin/g++ -I/Users/albert/albiasoft/albia.client.cpp/third_parties/RxCpp/Rx/v2/src -O2 -g -DNDEBUG -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -Wall -Wextra -Werror -Wunused -stdlib=libc++ -Wno-error=unused-command-line-argument -ftemplate-depth=1024 -std=gnu++11 -o CMakeFiles/pythagorian.dir/main.cpp.o -c /Users/albert/albiasoft/albia.client.cpp/third_parties/RxCpp/Rx/v2/examples/pythagorian/main.cpp
+
+- - - - - - - - - - -
+
+curlpp compilation
+
+Include path: third_parties/curlpp/include/curlpp
+
+mkdir build && cd build
+cmake ../
+make && sudo make install
+cd ../examples && mkdir build && cd build
+cmake ../
+make
+
+/usr/local/include/curlpp/
+/usr/local/lib/libcurlpp.a
+
+
+
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -std=c++11 -o CMakeFiles/example15.dir/example15.cpp.o -c /Users/albert/albiasoft/albia.client.cpp/third_parties/curlpp/examples/example15.cpp
+
+
+
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -cc1 -triple x86_64-apple-macosx10.12.0 -Wdeprecated-objc-isa-usage -Werror=deprecated-objc-isa-usage -emit-obj -mrelax-all -disable-free -disable-llvm-verifier -discard-value-names -main-file-name example15.cpp -mrelocation-model pic -pic-level 2 -mthread-model posix -mdisable-fp-elim -masm-verbose -munwind-tables -target-cpu penryn -target-linker-version 278.4 -dwarf-column-info -debugger-tuning=lldb -coverage-file /Users/albert/albiasoft/albia.client.cpp/third_parties/curlpp/examples/build/CMakeFiles/example15.dir/example15.cpp.o -resource-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.1.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -stdlib=libc++ -std=c++11 -fdeprecated-macro -fdebug-compilation-dir /Users/albert/albiasoft/albia.client.cpp/third_parties/curlpp/examples/build -ferror-limit 19 -fmessage-length 180 -stack-protector 1 -fblocks -fobjc-runtime=macosx-10.12.0 -fencode-extended-block-signature -fcxx-exceptions -fexceptions -fmax-type-align=16 -fdiagnostics-show-option -fcolor-diagnostics -o CMakeFiles/example15.dir/example15.cpp.o -x c++ /Users/albert/albiasoft/albia.client.cpp/third_parties/curlpp/examples/example15.cpp
+
+- - - - - -
+
+Compilar codi curlpp
+
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -std=c++11 -o connect_sample.cpp.o -c connect_sample.cpp
+
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names connect_sample.cpp.o -o connect_sample -lcurlpp -lcurl
+
+- - - - - - -
+
+Rapidjson compilation
+
+-I/Users/albert/albiasoft/albia.client.cpp/third_parties/rapidjson/include
+
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -std=c++11 -o simpledom.cpp.o -c simpledom.cpp -I/Users/albert/albiasoft/albia.client.cpp/third_parties/rapidjson/include
+
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names simpledom.cpp.o -o simpledom
+
+
+- - - - - - - -
+
+base64 compilation
+
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -std=c++11 -o base64.cpp.o -c base64.cpp
+
+
+
+std::cout << "TOKEN: " << deviceToken->token;
+std::cout << "DEVICE ID: " << deviceToken->device_id;
+
+
+- - - - -
+
+cd ..
+rm -rf build/
+mkdir build
+cd build
+cmake ../
+make install
+sudo cp libsioclient.a /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk/usr/lib/
+
+- - - - -
+
+protobuf c++ compilation
+
+wget "https://github.com/google/protobuf/releases/download/v3.5.1/protobuf-cpp-3.5.1.tar.gz"
+./configure
+make
+make check
+sudo make install
+sudo ldconfig
+
+- - - - - - - 
+
+compile c++ flags for protobuf
+
+-D_THREAD_SAFE -I/usr/local/include -L/usr/local/lib -lprotobuf -D_THREAD_SAFE
+
+#include "third_parties/protobuf_generated/proto3/albia.pb.h"
+#include "third_parties/protobuf_generated/proto3/timestamp.pb.h"
+
+- - - - - - - -
+
+compile SQLiteCpp
+
+git clone https://github.com/SRombauts/SQLiteCpp.git
+cd SQLiteCpp
+git submodule init
+git submodule update
+mkdir build
+cd build
+cmake -DSQLITECPP_BUILD_EXAMPLES=ON -DSQLITECPP_BUILD_TESTS=ON ../
+cmake --build .
+ctest --output-on-failure
+sudo make install
+cd ..
+cd sqlite3
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk -DSQLITE_ENABLE_COLUMN_METADATA=ON -o sqlite3.o -c sqlite3.c -I/Users/albert/albiasoft/albia.client.cpp/third_parties/SQLiteCpp/sqlite3
+
+- - - - - - - -

@@ -12,6 +12,8 @@
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
 #include <sio_client.h>
+#include <SQLiteCpp/SQLiteCpp.h>
+#include <SQLiteCpp/VariadicBind.h>
 #include "rapidjson/document.h"
 #include "rxcpp/rx.hpp"
 #include "base64.h"
@@ -472,6 +474,7 @@ int main(int, char **)
           usleep(3000000);
           client->writeDataBool("clau", true);
           client->disconnect();
+          std::cout << "SQlite3 version " << SQLite::VERSION << " (" << SQLite::getLibVersion() << ")" << std::endl;
         });
 
         client->onDisconnect([]() {
