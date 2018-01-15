@@ -134,12 +134,14 @@ string host;
 unsigned int apiPort;
 unsigned int webSocketPort;
 string dbFilename;
+string dbFolder;
 string deviceToken;
 unsigned int deviceId;
 string socketIOnamespace;
 sio::client *socketIO;
 sio::socket::ptr currentSocket;
 SIOConnectionListener *connectionListener;
+SQLite::Database *db;
 static const vector<string> explode(const string& s, const char& c);
 std::function<void()> onConnectCallback;
 std::function<void(const std::exception& ex)> onConnectErrorCallback;
@@ -147,6 +149,8 @@ std::function<void()> onDisconnectCallback;
 device_token_t* getDeviceTokenWithAPIKeyAndDeviceKey(const string& hostname, unsigned int apiPort, const string& apiKey, const string& deviceKey);
 rxcpp::observable<int> connectToServer(const string& hostname, unsigned int apiPort, unsigned int webSocketPort, const string& deviceToken, const string& apiKey, const string& deviceKey);
 google::protobuf::Timestamp* getProtobufTimestampFromDeviceTimestamp(DeviceTimestamp* timestamp);
+std::string getWorkingFolder();
+bool fileExists(const std::string& name);
 };
 
 DeviceClient::DeviceClient(const string& apiKey, const string& deviceKey, const string& hostname) {
@@ -165,6 +169,29 @@ DeviceClient::DeviceClient(const string& apiKey, const string& deviceKey, const 
         this->socketIO = NULL;
         this->connectionListener = NULL;
         this->currentSocket = NULL;
+        this->dbFolder = this->getWorkingFolder();
+
+        if(!this->fileExists(this->dbFolder+"/"+this->dbFilename)) {
+          this->db = new SQLite::Database(this->dbFolder+"/"+this->dbFilename, SQLite::OPEN_READWRITE|SQLite::OPEN_CREATE);
+          this->db->exec("CREATE TABLE write_operation (id_write_operation INTEGER PRIMARY KEY AUTOINCREMENT, id_device INTEGER NOT NULL, timestamp INTEGER NOT NULL, payload BLOB NOT NULL, sending INTEGER DEFAULT 0)");
+        } else {
+          this->db = new SQLite::Database(this->dbFolder+"/"+this->dbFilename, SQLite::OPEN_READWRITE);
+        }
+
+        this->db->exec("PRAGMA journal_mode = wal;");
+        this->db->exec("PRAGMA auto_vacuum = FULL;");
+        this->db->exec("vacuum");
+}
+
+bool DeviceClient::fileExists(const std::string& name) {
+  return ( access( name.c_str(), F_OK ) != -1 );
+}
+
+std::string DeviceClient::getWorkingFolder() {
+  char cwd[1024];
+  getcwd(cwd, sizeof(cwd));
+  std::string folder(cwd);
+  return folder;
 }
 
 const vector<string> DeviceClient::explode(const string& s, const char& c) {
@@ -471,10 +498,8 @@ int main(int, char **)
 
         client->onConnect([&client]() {
           cout << "Connected!" << endl;
-          usleep(3000000);
           client->writeDataBool("clau", true);
           client->disconnect();
-          std::cout << "SQlite3 version " << SQLite::VERSION << " (" << SQLite::getLibVersion() << ")" << std::endl;
         });
 
         client->onDisconnect([]() {
