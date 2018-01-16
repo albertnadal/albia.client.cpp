@@ -70,18 +70,6 @@ uint64_t microseconds;
 DeviceTimestamp();
 DeviceTimestamp(uint64_t _unix_timestamp);
 DeviceTimestamp(uint64_t _unix_timestamp, uint64_t _microseconds);
-
-/*
-  public static function UTCTimestampWithMicroseconds()
-  {
-      $deviceTimestamp = new DeviceTimestamp();
-      list($usec, $sec) = explode(" ", microtime());
-      $deviceTimestamp->unixTimestamp = (int)$sec;
-      $deviceTimestamp->microseconds = floor((float)$usec * 1000000);
-      return $deviceTimestamp;
-  }
-*/
-
 };
 
 DeviceTimestamp::DeviceTimestamp() {
@@ -155,6 +143,7 @@ std::function<void()> onDisconnectCallback;
 device_token_t* getDeviceTokenWithAPIKeyAndDeviceKey(const string& hostname, unsigned int apiPort, const string& apiKey, const string& deviceKey);
 rxcpp::observable<int> connectToServer(const string& hostname, unsigned int apiPort, unsigned int webSocketPort, const string& deviceToken, const string& apiKey, const string& deviceKey);
 void startWriteQueueThread();
+void enqueueWriteOperation(DeviceRecordMsg *record);
 unsigned int getLastRecordIdSent();
 void setLastRecordIdSent(unsigned int value);
 google::protobuf::Timestamp* getProtobufTimestampFromDeviceTimestamp(DeviceTimestamp* timestamp);
@@ -326,20 +315,12 @@ cout << "SENDING MSG" << endl;
   });
 }
 
-void DeviceClient::writeDataBool(const string& key, bool data, DeviceTimestamp* timestamp = NULL) {
-  DeviceRecordMsg *record = new DeviceRecordMsg();
-  record->set_deviceid(0);
-  record->set_key(key);
-  record->set_boolvalue(data);
-  record->set_type(DeviceRecordMsg_RecordType_BOOL);
-  google::protobuf::Timestamp *utcDate = this->getProtobufTimestampFromDeviceTimestamp(timestamp);
-  record->set_allocated_date(utcDate);
-
+void DeviceClient::enqueueWriteOperation(DeviceRecordMsg *record) {
   size_t size = record->ByteSizeLong();
   void *buffer = malloc(size);
   record->SerializeToArray(buffer, size);
 
-  SQLite::Statement query(*this->db, "INSERT INTO write_operation (id_device, timestamp, payload, sending) VALUES (0, "+std::to_string(utcDate->seconds())+", ?, 0)");
+  SQLite::Statement query(*this->db, "INSERT INTO write_operation (id_device, timestamp, payload, sending) VALUES (0, "+std::to_string(record->date().seconds())+", ?, 0)");
   query.bind(1, buffer, size);
   query.exec();
 
@@ -354,32 +335,92 @@ void DeviceClient::writeDataBool(const string& key, bool data, DeviceTimestamp* 
   this->db->exec("DELETE FROM write_operation WHERE id_write_operation <= "+std::to_string(lastRecordIdSent));
 }
 
-void DeviceClient::writeDataInt32(const string& key, int32_t data, DeviceTimestamp* timestamp = NULL) {
+void DeviceClient::writeDataBool(const string& key, bool data, DeviceTimestamp* timestamp = NULL) {
+  DeviceRecordMsg *record = new DeviceRecordMsg();
+  record->set_deviceid(0);
+  record->set_key(key);
+  record->set_boolvalue(data);
+  record->set_type(DeviceRecordMsg_RecordType_BOOL);
+  google::protobuf::Timestamp *utcDate = this->getProtobufTimestampFromDeviceTimestamp(timestamp);
+  record->set_allocated_date(utcDate);
+  this->enqueueWriteOperation(record);
+}
 
+void DeviceClient::writeDataInt32(const string& key, int32_t data, DeviceTimestamp* timestamp = NULL) {
+  DeviceRecordMsg *record = new DeviceRecordMsg();
+  record->set_deviceid(0);
+  record->set_key(key);
+  record->set_int32value(data);
+  record->set_type(DeviceRecordMsg_RecordType_INT32);
+  google::protobuf::Timestamp *utcDate = this->getProtobufTimestampFromDeviceTimestamp(timestamp);
+  record->set_allocated_date(utcDate);
+  this->enqueueWriteOperation(record);
 }
 
 void DeviceClient::writeDataInt64(const string& key, int64_t data, DeviceTimestamp* timestamp = NULL) {
-
+  DeviceRecordMsg *record = new DeviceRecordMsg();
+  record->set_deviceid(0);
+  record->set_key(key);
+  record->set_int64value(data);
+  record->set_type(DeviceRecordMsg_RecordType_INT64);
+  google::protobuf::Timestamp *utcDate = this->getProtobufTimestampFromDeviceTimestamp(timestamp);
+  record->set_allocated_date(utcDate);
+  this->enqueueWriteOperation(record);
 }
 
 void DeviceClient::writeDataUInt32(const string& key, uint32_t data, DeviceTimestamp* timestamp = NULL) {
-
+  DeviceRecordMsg *record = new DeviceRecordMsg();
+  record->set_deviceid(0);
+  record->set_key(key);
+  record->set_uint32value(data);
+  record->set_type(DeviceRecordMsg_RecordType_UINT32);
+  google::protobuf::Timestamp *utcDate = this->getProtobufTimestampFromDeviceTimestamp(timestamp);
+  record->set_allocated_date(utcDate);
+  this->enqueueWriteOperation(record);
 }
 
 void DeviceClient::writeDataUInt64(const string& key, uint64_t data, DeviceTimestamp* timestamp = NULL) {
-
+  DeviceRecordMsg *record = new DeviceRecordMsg();
+  record->set_deviceid(0);
+  record->set_key(key);
+  record->set_uint64value(data);
+  record->set_type(DeviceRecordMsg_RecordType_UINT64);
+  google::protobuf::Timestamp *utcDate = this->getProtobufTimestampFromDeviceTimestamp(timestamp);
+  record->set_allocated_date(utcDate);
+  this->enqueueWriteOperation(record);
 }
 
 void DeviceClient::writeDataDouble(const string& key, double data, DeviceTimestamp* timestamp = NULL) {
-
+  DeviceRecordMsg *record = new DeviceRecordMsg();
+  record->set_deviceid(0);
+  record->set_key(key);
+  record->set_doublevalue(data);
+  record->set_type(DeviceRecordMsg_RecordType_DOUBLE);
+  google::protobuf::Timestamp *utcDate = this->getProtobufTimestampFromDeviceTimestamp(timestamp);
+  record->set_allocated_date(utcDate);
+  this->enqueueWriteOperation(record);
 }
 
 void DeviceClient::writeDataFloat(const string& key, float data, DeviceTimestamp* timestamp = NULL) {
-
+  DeviceRecordMsg *record = new DeviceRecordMsg();
+  record->set_deviceid(0);
+  record->set_key(key);
+  record->set_floatvalue(data);
+  record->set_type(DeviceRecordMsg_RecordType_FLOAT);
+  google::protobuf::Timestamp *utcDate = this->getProtobufTimestampFromDeviceTimestamp(timestamp);
+  record->set_allocated_date(utcDate);
+  this->enqueueWriteOperation(record);
 }
 
 void DeviceClient::writeDataString(const string& key, const string& data, DeviceTimestamp* timestamp = NULL) {
-
+  DeviceRecordMsg *record = new DeviceRecordMsg();
+  record->set_deviceid(0);
+  record->set_key(key);
+  record->set_stringvalue(data);
+  record->set_type(DeviceRecordMsg_RecordType_STRING);
+  google::protobuf::Timestamp *utcDate = this->getProtobufTimestampFromDeviceTimestamp(timestamp);
+  record->set_allocated_date(utcDate);
+  this->enqueueWriteOperation(record);
 }
 
 DeviceClient::device_token_t* DeviceClient::getDeviceTokenWithAPIKeyAndDeviceKey(const string& hostname, unsigned int apiPort, const string& apiKey, const string& deviceKey) {
@@ -608,12 +649,21 @@ int main(int, char **)
           cout << "Connected!" << endl;
           client->writeDataBool("clau", true);
 usleep(3000000);
-          client->writeDataBool("clau", false);
+          client->writeDataInt32("clau", 652356);
 usleep(3000000);
-          client->writeDataBool("clau", true);
+          client->writeDataInt64("clau", 4524345321);
 usleep(3000000);
-          client->writeDataBool("clau", false);
+          client->writeDataUInt32("clau", 23324324);
 usleep(3000000);
+          client->writeDataUInt64("clau", 2332432432324);
+usleep(3000000);
+          client->writeDataDouble("clau", 34332332432432324);
+usleep(3000000);
+          client->writeDataFloat("clau", 342.432432324);
+usleep(3000000);
+          client->writeDataString("clau", std::string("hello world"));
+usleep(3000000);
+
           client->disconnect();
         });
 
