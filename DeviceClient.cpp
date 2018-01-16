@@ -7,7 +7,9 @@
 #include <condition_variable>
 #include <sstream>
 #include <iostream>
+#include <fstream>
 #include <chrono>
+#include <thread>
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
@@ -135,6 +137,7 @@ unsigned int apiPort;
 unsigned int webSocketPort;
 string dbFilename;
 string dbFolder;
+string lastRecordFilename;
 string deviceToken;
 unsigned int deviceId;
 string socketIOnamespace;
@@ -142,12 +145,17 @@ sio::client *socketIO;
 sio::socket::ptr currentSocket;
 SIOConnectionListener *connectionListener;
 SQLite::Database *db;
+SQLite::Database *dbThread;
+std::thread *writeQueueThread;
 static const vector<string> explode(const string& s, const char& c);
 std::function<void()> onConnectCallback;
 std::function<void(const std::exception& ex)> onConnectErrorCallback;
 std::function<void()> onDisconnectCallback;
 device_token_t* getDeviceTokenWithAPIKeyAndDeviceKey(const string& hostname, unsigned int apiPort, const string& apiKey, const string& deviceKey);
 rxcpp::observable<int> connectToServer(const string& hostname, unsigned int apiPort, unsigned int webSocketPort, const string& deviceToken, const string& apiKey, const string& deviceKey);
+void startWriteQueueThread();
+unsigned int getLastRecordIdSent();
+void setLastRecordIdSent(unsigned int value);
 google::protobuf::Timestamp* getProtobufTimestampFromDeviceTimestamp(DeviceTimestamp* timestamp);
 std::string getWorkingFolder();
 bool fileExists(const std::string& name);
@@ -162,6 +170,7 @@ DeviceClient::DeviceClient(const string& apiKey, const string& deviceKey, const 
         this->webSocketPort = 3000;
         this->deviceId = 0;
         this->dbFilename = "albia.sqlite";
+        this->lastRecordFilename = "albia.lastid";
         this->deviceToken = "";
         this->socketIOnamespace = "";
         this->onConnectCallback = NULL;
@@ -174,13 +183,19 @@ DeviceClient::DeviceClient(const string& apiKey, const string& deviceKey, const 
         if(!this->fileExists(this->dbFolder+"/"+this->dbFilename)) {
           this->db = new SQLite::Database(this->dbFolder+"/"+this->dbFilename, SQLite::OPEN_READWRITE|SQLite::OPEN_CREATE);
           this->db->exec("CREATE TABLE write_operation (id_write_operation INTEGER PRIMARY KEY AUTOINCREMENT, id_device INTEGER NOT NULL, timestamp INTEGER NOT NULL, payload BLOB NOT NULL, sending INTEGER DEFAULT 0)");
+          this->dbThread = new SQLite::Database(this->dbFolder+"/"+this->dbFilename);
         } else {
           this->db = new SQLite::Database(this->dbFolder+"/"+this->dbFilename, SQLite::OPEN_READWRITE);
+          this->dbThread = new SQLite::Database(this->dbFolder+"/"+this->dbFilename);
         }
 
         this->db->exec("PRAGMA journal_mode = wal;");
         this->db->exec("PRAGMA auto_vacuum = FULL;");
         this->db->exec("vacuum");
+
+        this->dbThread->exec("PRAGMA journal_mode = wal;");
+        this->dbThread->exec("PRAGMA auto_vacuum = FULL;");
+        this->dbThread->exec("vacuum");
 }
 
 bool DeviceClient::fileExists(const std::string& name) {
@@ -236,6 +251,69 @@ google::protobuf::Timestamp* DeviceClient::getProtobufTimestampFromDeviceTimesta
   return utcDate;
 }
 
+unsigned int DeviceClient::getLastRecordIdSent() {
+  if (!this->fileExists(this->dbFolder+"/"+this->lastRecordFilename)) {
+      return 0;
+  } else {
+      std::ifstream ifs(this->dbFolder+"/"+this->lastRecordFilename);
+      std::string lastId((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+
+      if(lastId == "") {
+          return 0;
+      } else {
+          return atoi(lastId.c_str());
+      }
+  }
+}
+
+void DeviceClient::setLastRecordIdSent(unsigned int value) {
+  std::ofstream ofs;
+  ofs.open(this->dbFolder+"/"+this->lastRecordFilename, ios::in);
+  ofs << std::to_string(value);
+  ofs.close();
+}
+
+void DeviceClient::startWriteQueueThread() {
+  this->writeQueueThread = new std::thread([&]() {
+
+    bool success = true;
+    bool empty = false;
+    unsigned int lastRecordIdSent = 0;
+
+    while((this->isConnected) && (success)) {
+      empty = false;
+      while((this->isConnected) && (!empty)) {
+        lastRecordIdSent = this->getLastRecordIdSent();
+
+        SQLite::Statement query(*this->dbThread, "SELECT id_write_operation AS id_write_operation, payload AS payload, timestamp AS timestamp FROM write_operation WHERE timestamp = (SELECT MIN(timestamp) FROM write_operation WHERE id_write_operation > "+std::to_string(lastRecordIdSent)+" AND sending = 0) AND id_write_operation > "+std::to_string(lastRecordIdSent)+" AND sending = 0 ORDER BY id_device ASC LIMIT 1");
+        if(query.executeStep()) {
+          unsigned int id_write_operation = query.getColumn(0).getInt();
+/*
+          $id_write_operation = $res['id_write_operation'];
+          $payload = new DeviceRecordMsg();
+          $payload->mergeFromString($res['payload']);
+          $payload->setDeviceId($self->deviceId);
+
+          $utcDate = new Google\Protobuf\Timestamp();
+          $utcDate->setSeconds($res['timestamp']);
+          $utcDate->setNanos(0);
+          $payload->setDate($utcDate);
+
+          if ($self->isConnected()) {
+              $socketIO->emitBinary('write', $payload->serializeToString());
+              $self->setLastRecordIdSent($id_write_operation);
+          }
+*/
+        } else {
+          empty = true;
+        }
+
+      }
+    }
+
+  });
+}
+
 void DeviceClient::writeDataBool(const string& key, bool data, DeviceTimestamp* timestamp = NULL) {
   DeviceRecordMsg *record = new DeviceRecordMsg();
   record->set_deviceid(0);
@@ -244,6 +322,35 @@ void DeviceClient::writeDataBool(const string& key, bool data, DeviceTimestamp* 
   record->set_type(DeviceRecordMsg_RecordType_BOOL);
   google::protobuf::Timestamp *utcDate = this->getProtobufTimestampFromDeviceTimestamp(timestamp);
   record->set_allocated_date(utcDate);
+
+  size_t size = record->ByteSizeLong();
+  void *buffer = malloc(size);
+  record->SerializeToArray(buffer, size);
+
+  SQLite::Statement query(*this->db, "INSERT INTO write_operation (id_device, timestamp, payload, sending) VALUES (0, "+std::to_string(utcDate->seconds())+", ?, 0)");
+  query.bind(1, buffer, size);
+  int nb = query.exec();
+
+  if(this->isConnected) {
+    this->startWriteQueueThread();
+  }
+/*
+  $query = $this->db->prepare("INSERT INTO write_operation (id_device, timestamp, payload, sending) VALUES (0, $unixTimestamp, ?, 0)");
+  $query->bindValue(1, $record->serializeToString(), SQLITE3_BLOB);
+
+  if ($query->execute()) {
+      if ((!$this->isWritting()) && ($this->isConnected())) {
+          $this->startWriteQueueThread();
+      }
+  } else {
+      $this->handleDBError($this);
+  }
+
+  $lastRecordIdSent = $this->getLastRecordIdSent();
+  $this->db->exec("DELETE FROM write_operation WHERE id_write_operation <= $lastRecordIdSent");
+*/
+  free(buffer);
+  delete record;
 }
 
 void DeviceClient::writeDataInt32(const string& key, int32_t data, DeviceTimestamp* timestamp = NULL) {
