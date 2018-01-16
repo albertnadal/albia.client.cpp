@@ -147,6 +147,7 @@ SIOConnectionListener *connectionListener;
 SQLite::Database *db;
 SQLite::Database *dbThread;
 std::thread *writeQueueThread;
+bool writeQueueThreadIsRunning;
 static const vector<string> explode(const string& s, const char& c);
 std::function<void()> onConnectCallback;
 std::function<void(const std::exception& ex)> onConnectErrorCallback;
@@ -178,20 +179,17 @@ DeviceClient::DeviceClient(const string& apiKey, const string& deviceKey, const 
         this->socketIO = NULL;
         this->connectionListener = NULL;
         this->currentSocket = NULL;
+        this->writeQueueThreadIsRunning = false;
         this->dbFolder = this->getWorkingFolder();
 
         if(!this->fileExists(this->dbFolder+"/"+this->dbFilename)) {
-          this->db = new SQLite::Database(this->dbFolder+"/"+this->dbFilename, SQLite::OPEN_READWRITE|SQLite::OPEN_CREATE);
-          this->db->exec("CREATE TABLE write_operation (id_write_operation INTEGER PRIMARY KEY AUTOINCREMENT, id_device INTEGER NOT NULL, timestamp INTEGER NOT NULL, payload BLOB NOT NULL, sending INTEGER DEFAULT 0)");
-          this->dbThread = new SQLite::Database(this->dbFolder+"/"+this->dbFilename);
-        } else {
+          this->dbThread = new SQLite::Database(this->dbFolder+"/"+this->dbFilename, SQLite::OPEN_READWRITE|SQLite::OPEN_CREATE);
+          this->dbThread->exec("CREATE TABLE write_operation (id_write_operation INTEGER PRIMARY KEY AUTOINCREMENT, id_device INTEGER NOT NULL, timestamp INTEGER NOT NULL, payload BLOB NOT NULL, sending INTEGER DEFAULT 0)");
           this->db = new SQLite::Database(this->dbFolder+"/"+this->dbFilename, SQLite::OPEN_READWRITE);
-          this->dbThread = new SQLite::Database(this->dbFolder+"/"+this->dbFilename);
+        } else {
+          this->dbThread = new SQLite::Database(this->dbFolder+"/"+this->dbFilename, SQLite::OPEN_READWRITE);
+          this->db = new SQLite::Database(this->dbFolder+"/"+this->dbFilename, SQLite::OPEN_READWRITE);
         }
-
-        this->db->exec("PRAGMA journal_mode = wal;");
-        this->db->exec("PRAGMA auto_vacuum = FULL;");
-        this->db->exec("vacuum");
 
         this->dbThread->exec("PRAGMA journal_mode = wal;");
         this->dbThread->exec("PRAGMA auto_vacuum = FULL;");
@@ -268,12 +266,18 @@ unsigned int DeviceClient::getLastRecordIdSent() {
 
 void DeviceClient::setLastRecordIdSent(unsigned int value) {
   std::ofstream ofs;
-  ofs.open(this->dbFolder+"/"+this->lastRecordFilename, ios::in);
+  ofs.open(this->dbFolder+"/"+this->lastRecordFilename, ios::out);
   ofs << std::to_string(value);
   ofs.close();
 }
 
 void DeviceClient::startWriteQueueThread() {
+
+  if(this->writeQueueThreadIsRunning) {
+    return;
+  }
+
+  this->writeQueueThreadIsRunning = true;
   this->writeQueueThread = new std::thread([&]() {
 
     bool success = true;
@@ -281,29 +285,36 @@ void DeviceClient::startWriteQueueThread() {
     unsigned int lastRecordIdSent = 0;
 
     while((this->isConnected) && (success)) {
+
       empty = false;
       while((this->isConnected) && (!empty)) {
-        lastRecordIdSent = this->getLastRecordIdSent();
 
+        lastRecordIdSent = this->getLastRecordIdSent();
         SQLite::Statement query(*this->dbThread, "SELECT id_write_operation AS id_write_operation, payload AS payload, timestamp AS timestamp FROM write_operation WHERE timestamp = (SELECT MIN(timestamp) FROM write_operation WHERE id_write_operation > "+std::to_string(lastRecordIdSent)+" AND sending = 0) AND id_write_operation > "+std::to_string(lastRecordIdSent)+" AND sending = 0 ORDER BY id_device ASC LIMIT 1");
         if(query.executeStep()) {
           unsigned int id_write_operation = query.getColumn(0).getInt();
-/*
-          $id_write_operation = $res['id_write_operation'];
-          $payload = new DeviceRecordMsg();
-          $payload->mergeFromString($res['payload']);
-          $payload->setDeviceId($self->deviceId);
+          const void* payload_blob = query.getColumn(1).getBlob();
+          size_t payload_size = query.getColumn(1).getBytes();
+          unsigned int timestamp = query.getColumn(2).getInt();
+cout << "ID: " << std::to_string(id_write_operation) << endl;
+cout << "PAYLOAD SIZE: " << std::to_string(payload_size) << endl;
+cout << "UNIX TIMESTAMP: " << std::to_string(timestamp) << endl;
+          DeviceRecordMsg *payload = new DeviceRecordMsg();
+          payload->ParseFromArray(payload_blob, payload_size);
+          payload->set_deviceid(this->deviceId);
+          google::protobuf::Timestamp *utcDate = new google::protobuf::Timestamp();
+          utcDate->set_seconds(timestamp);
+          utcDate->set_nanos(0);
+          payload->set_allocated_date(utcDate);
 
-          $utcDate = new Google\Protobuf\Timestamp();
-          $utcDate->setSeconds($res['timestamp']);
-          $utcDate->setNanos(0);
-          $payload->setDate($utcDate);
-
-          if ($self->isConnected()) {
-              $socketIO->emitBinary('write', $payload->serializeToString());
-              $self->setLastRecordIdSent($id_write_operation);
+          if(this->isConnected) {
+cout << "SENDING MSG" << endl;
+            std::string buffer_string;
+            payload->SerializeToString(&buffer_string);
+            this->currentSocket->emit("write", std::make_shared<std::string>(buffer_string.c_str(), buffer_string.length()));
+            this->setLastRecordIdSent(id_write_operation);
           }
-*/
+
         } else {
           empty = true;
         }
@@ -311,6 +322,7 @@ void DeviceClient::startWriteQueueThread() {
       }
     }
 
+    this->writeQueueThreadIsRunning = false;
   });
 }
 
@@ -329,28 +341,17 @@ void DeviceClient::writeDataBool(const string& key, bool data, DeviceTimestamp* 
 
   SQLite::Statement query(*this->db, "INSERT INTO write_operation (id_device, timestamp, payload, sending) VALUES (0, "+std::to_string(utcDate->seconds())+", ?, 0)");
   query.bind(1, buffer, size);
-  int nb = query.exec();
+  query.exec();
+
+  free(buffer);
+  delete record;
 
   if(this->isConnected) {
     this->startWriteQueueThread();
   }
-/*
-  $query = $this->db->prepare("INSERT INTO write_operation (id_device, timestamp, payload, sending) VALUES (0, $unixTimestamp, ?, 0)");
-  $query->bindValue(1, $record->serializeToString(), SQLITE3_BLOB);
 
-  if ($query->execute()) {
-      if ((!$this->isWritting()) && ($this->isConnected())) {
-          $this->startWriteQueueThread();
-      }
-  } else {
-      $this->handleDBError($this);
-  }
-
-  $lastRecordIdSent = $this->getLastRecordIdSent();
-  $this->db->exec("DELETE FROM write_operation WHERE id_write_operation <= $lastRecordIdSent");
-*/
-  free(buffer);
-  delete record;
+  unsigned int lastRecordIdSent = this->getLastRecordIdSent();
+  this->db->exec("DELETE FROM write_operation WHERE id_write_operation <= "+std::to_string(lastRecordIdSent));
 }
 
 void DeviceClient::writeDataInt32(const string& key, int32_t data, DeviceTimestamp* timestamp = NULL) {
@@ -606,6 +607,13 @@ int main(int, char **)
         client->onConnect([&client]() {
           cout << "Connected!" << endl;
           client->writeDataBool("clau", true);
+usleep(3000000);
+          client->writeDataBool("clau", false);
+usleep(3000000);
+          client->writeDataBool("clau", true);
+usleep(3000000);
+          client->writeDataBool("clau", false);
+usleep(3000000);
           client->disconnect();
         });
 
@@ -618,6 +626,6 @@ int main(int, char **)
         });
 
         client->connect();
-usleep(10000000);
+usleep(20000000);
         return 0;
 }
